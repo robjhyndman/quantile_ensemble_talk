@@ -5,3 +5,6 @@
 renv/
 *_cache/
 *_files/
+cafe.rds
+ensembles_NYCR_2020.log
+ensembles_NYCR_2020.tex
