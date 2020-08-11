@@ -18,15 +18,15 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   echo = FALSE,
-  message=FALSE,
-  warning=FALSE,
-  cache=TRUE,
-  dev.args=list(bg=grey(0.9), pointsize=11)
+  message = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  dev.args = list(bg = grey(0.9), pointsize = 11)
 )
 library(fpp3)
 library(distributional)
 library(gganimate)
-set.seed(2020-08-10)
+set.seed(2020 - 08 - 10)
 
 if (file.exists("cafe.rds")) {
   cafe <- readRDS("cafe.rds")
@@ -52,7 +52,7 @@ train <- cafe %>%
   filter(year(date) <= 2017)
 # Fit ETS model
 fit <- train %>%
-  model(ETS = ETS(turnover)) 
+  model(ETS = ETS(turnover))
 # Forecasts
 fc <- fit %>%
   forecast(h = "2 years")
@@ -60,7 +60,7 @@ fc <- fit %>%
 future <- fit %>%
   generate(times = 1000, h = "2 years") %>%
   as_tibble() %>%
-  mutate(modrep = paste0(.model, .rep)) 
+  mutate(modrep = paste0(.model, .rep))
 # Colours for sample paths. Need to permute to avoid all similar colours on top in graph
 colours <- tibble(modrep = unique(future$modrep)) %>%
   mutate(col = sample(rainbow(1000)))
@@ -75,34 +75,34 @@ p1 <- train %>%
     y = "Turnover (A$million)",
     title = "Australian monthly café turnover: ETS futures"
   ) +
-  guides(colour = FALSE, level=FALSE)
-p1 + 
+  guides(colour = FALSE, level = FALSE)
+p1 +
   geom_line(
     data = filter(future, as.numeric(.rep) <= 5),
-    aes(y = .sim, col=col, group = c(modrep)),
-  ) 
+    aes(y = .sim, col = col, group = c(modrep)),
+  )
 ```
 
 ## Forecasting using possible futures
 
 ```{r samples2, echo=FALSE, dependson='samples'}
 p1$data <- train %>% filter(year(date) >= 2015)
-p1 <- p1 + 
-  ylim(min(p1$data$turnover), max(future$.sim)) 
-p1 + 
+p1 <- p1 +
+  ylim(min(p1$data$turnover), max(future$.sim))
+p1 +
   geom_line(
     data = filter(future, as.numeric(.rep) <= 5),
-    aes(y = .sim, col=col, group = c(modrep)),
+    aes(y = .sim, col = col, group = c(modrep)),
   )
 ```
 
 ## Forecasting using possible futures
 
 ```{r samples2a, echo=FALSE, dependson='samples'}
-p1 + 
+p1 +
   geom_line(
     data = filter(future),
-    aes(y = .sim, col=col, group = c(modrep)),
+    aes(y = .sim, col = col, group = c(modrep)),
   )
 ```
 
@@ -110,20 +110,20 @@ p1 +
 ## Forecasting using possible futures
 
 ```{r samples3, echo=FALSE, dependson='samples2'}
-p1 <- p1 + 
+p1 <- p1 +
   geom_line(
     data = future,
     aes(y = .sim, group = modrep),
-    color = 'gray', alpha=0.2
-  ) 
+    color = "gray", alpha = 0.2
+  )
 p1
 ```
 
 ## Forecasting using possible futures
 
 ```{r point, echo=FALSE, dependson='samples3'}
-p1 + 
-  autolayer(fc, level=NULL, lwd=1) 
+p1 +
+  autolayer(fc, level = NULL, lwd = 1)
 ```
 
 \begin{textblock}{4.2}(11.5,1.5)\fontsize{11}{13}\sf
@@ -136,7 +136,7 @@ p1 +
 
 ```{r interval, echo=FALSE, dependson='samples3'}
 p1 +
-  autolayer(fc, level=80, lwd=1) 
+  autolayer(fc, level = 80, lwd = 1)
 ```
 
 \begin{textblock}{4.2}(11.5,1.5)\fontsize{11}{13}\sf
@@ -151,8 +151,8 @@ p1 +
 ## Forecasting using possible futures
 
 ```{r quantile, echo=FALSE, dependson='samples3'}
-p1 + 
-  autolayer(fc, level=80, lwd=1)
+p1 +
+  autolayer(fc, level = 80, lwd = 1)
 ```
 
 \begin{textblock}{4.2}(11.5,1.5)\fontsize{11}{13}\sf
@@ -178,11 +178,11 @@ qf <- fit %>%
   summarise(
     qs = quantile(.sim, seq(from = 0.1, to = 0.9, by = 0.1)), prob = seq(from = 0.1, to = 0.9, by = 0.1)
   )
-p1 <- p1  +
+p1 <- p1 +
   geom_line(
-    data=qf, 
-    mapping=aes(x = date, y=qs, group=prob), 
-    colour="blue"
+    data = qf,
+    mapping = aes(x = date, y = qs, group = prob),
+    colour = "blue"
   )
 p1
 ```
@@ -196,7 +196,7 @@ p1
 ## Quantile forecasts
 
 ```{r quantiles3, dependson='quantiles'}
-p1 + 
+p1 +
   geom_line(aes(y = turnover), data = cafe %>% filter(year(date) >= 2018))
 ```
 
@@ -233,31 +233,31 @@ $$
 \end{itemize}}
 \end{textblock}
 \begin{textblock}{6}(10,2)
-\only<3->{\animategraphics[loop]{10}{ensembles_NYCR_2020_files/figure-beamer/pinball-}{1}{100}}
+\only<3->{\animategraphics[loop,autoplay]{10}{ensembles_NYCR_2020_files/figure-beamer/pinball-}{1}{100}}
 \end{textblock}
 
-```{r pinball, eval=FALSE, echo=FALSE, fig.show='animate', interval=1/10, message=FALSE, fig.height=3, fig.width=5}
+```{r pinball, eval=FALSE, echo=FALSE, fig.show='animate', interval=1/10, message=FALSE, fig.height=3, fig.width=5, cache=FALSE}
 # Turn eval=TRUE to recompute these graphs. They are loaded in the above animategraphics call.
-prob <- seq(0.05,0.95,by=0.05)
+prob <- seq(0.05, 0.95, by = 0.05)
 df <- expand.grid(
-    error = c(-10,0,10),
-    p = c(prob,rev(head(prob,-1)[-1]))
-  ) %>%
+  error = c(-10, 0, 10),
+  p = c(prob, rev(head(prob, -1)[-1]))
+) %>%
   mutate(
-    state = rep(seq(length(p)/3),rep(3,length(p)/3)),
-    qpt = 2*p*error*(error>0) - 2*(1-p)*error*(error<0)
-  ) 
+    state = rep(seq(length(p) / 3), rep(3, length(p) / 3)),
+    qpt = 2 * p * error * (error > 0) - 2 * (1 - p) * error * (error < 0)
+  )
 labels <- df %>%
-  select(p,state) %>%
+  select(p, state) %>%
   distinct() %>%
-  mutate(label = paste0("p = ",sprintf("%.2f",p)))
-df %>%ggplot(aes(x=error, y=qpt)) +
-  geom_line(aes(group=state), colour='red') +
+  mutate(label = paste0("p = ", sprintf("%.2f", p)))
+df %>% ggplot(aes(x = error, y = qpt)) +
+  geom_line(aes(group = state), colour = "red") +
   labs(
-    x= latex2exp::TeX("Error: $y_t - f_{p,t}$"),
+    x = latex2exp::TeX("Error: $y_t - f_{p,t}$"),
     y = latex2exp::TeX("Q_{p,t}")
   ) +
-  geom_label(data = labels, aes(x=0, y=17, label=label)) +
+  geom_label(data = labels, aes(x = 0, y = 17, label = label)) +
   transition_states(state)
 ```
   
@@ -265,7 +265,7 @@ df %>%ggplot(aes(x=error, y=qpt)) +
 \fontsize{9}{10}\sf
 
 ```{r crps1, echo=TRUE}
-cafe %>% 
+cafe %>%
   filter(year(date) <= 2017)
 ```
 
@@ -275,11 +275,11 @@ cafe %>%
 \fontsize{9}{10}\sf
 
 ```{r crps2, echo=TRUE}
-cafe %>% 
+cafe %>%
   filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   )
 ```
 
@@ -289,11 +289,11 @@ cafe %>%
 \fontsize{9}{10}\sf
 
 ```{r crps3, echo=TRUE}
-cafe %>% 
+cafe %>%
   filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   ) %>%
   forecast(h = "2 years")
 ```
@@ -304,11 +304,11 @@ cafe %>%
 \fontsize{9}{10}\sf
 
 ```{r crps4, echo=TRUE}
-cafe %>% 
+cafe %>%
   filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   ) %>%
   forecast(h = "2 years") %>%
   accuracy(cafe, measures = list(CRPS = CRPS))
@@ -326,13 +326,13 @@ cafe %>%
   * Allows uncertainty of model selection to be incorporated.
 
 ```{r ensemble_samples, echo=FALSE, fig.height=2.6}
-fit <- cafe %>% 
+fit <- cafe %>%
   filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   )
-future <- fit %>% 
+future <- fit %>%
   generate(times = 10, h = "2 years")
 cafe %>%
   filter(year(date) >= 2014, year(date) <= 2017) %>%
@@ -346,12 +346,13 @@ cafe %>%
 \fontsize{9}{10}\sf
 
 ```{r ensemble1, echo=TRUE}
-cafe %>% filter(year(date) <= 2017) %>%
+cafe %>%
+  filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   ) %>%
-  forecast(h = "2 years") 
+  forecast(h = "2 years")
 ```
 
 \vspace*{10cm}
@@ -360,19 +361,21 @@ cafe %>% filter(year(date) <= 2017) %>%
 \fontsize{9}{10}\sf
 
 ```{r ensemble1a, echo=TRUE}
-cafe %>% filter(year(date) <= 2017) %>%
+cafe %>%
+  filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   ) %>%
   forecast(h = "2 years") -> fc
 ```
 
 ```{r ensemble1b, echo=FALSE}
-cafe %>% filter(year(date) <= 2017) %>%
+cafe %>%
+  filter(year(date) <= 2017) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d=1) + PDQ(D=1))
+    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
   ) %>%
   forecast(h = "2 years")
 ```
@@ -385,7 +388,7 @@ cafe %>% filter(year(date) <= 2017) %>%
 ```{r ensemble2, echo=TRUE, dependson='ensemble1a'}
 fc %>%
   summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights=c(0.5,0.5)),
+    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
     .mean = mean(turnover)
   ) %>%
   as_fable(response = "turnover", distribution = turnover)
@@ -397,7 +400,7 @@ fc %>%
 ```{r ensemble2a, echo=TRUE, dependson='ensemble1a'}
 fc %>%
   summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights=c(0.5,0.5)),
+    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
     .mean = mean(turnover)
   ) %>%
   as_fable(response = "turnover", distribution = turnover) -> ensemble
@@ -406,7 +409,7 @@ fc %>%
 ```{r ensemble2b, echo=FALSE, dependson='ensemble1a'}
 fc %>%
   summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights=c(0.5,0.5)),
+    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
     .mean = mean(turnover)
   ) %>%
   as_fable(response = "turnover", distribution = turnover)
@@ -418,7 +421,7 @@ fc %>%
 
 ```{r ensemble3, echo=TRUE, dependson='ensemble2a'}
 ensemble %>%
-  accuracy(cafe, measures = list(CRPS = CRPS)) 
+  accuracy(cafe, measures = list(CRPS = CRPS))
 ```
 
 \fontsize{14}{16}\sf
