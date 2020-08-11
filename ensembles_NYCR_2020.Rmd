@@ -3,7 +3,6 @@ title: "Ensemble forecasts with fable"
 author: Rob J Hyndman
 date: 14 August 2020
 fontsize: 14pt
-titlepage: "m-master-business-analytics.jpg"
 classoption: aspectratio=169
 toc: false
 output:
