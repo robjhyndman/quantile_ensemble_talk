@@ -1,8 +1,9 @@
 ---
 title: "Ensemble forecasts with fable"
 author: Rob J Hyndman
-date: 14 August 2020
+date: "NYR Conference: 14 August 2020"
 fontsize: 14pt
+titlefontsize: 32pt
 classoption: aspectratio=169
 toc: true
 output:
@@ -116,10 +117,17 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
+\only<2>{\begin{textblock}{5.2}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
+\texttt{auscafe \%>\%}\\
+\texttt{  filter(year(date) <= 2018) \%>\%}\\
+\texttt{  model(ETS = ETS(turnover))}
+\end{block}\end{textblock}}
 
-## Forecasting using possible futures
+\vspace*{10cm}
 
-```{r plots, echo=FALSE, dependson="data"}
+## Australian monthly café turnover
+
+```{r plots2, echo=FALSE, dependson="data"}
 p1 +
   geom_line(
     data = filter(future, as.numeric(.rep) <= 5),
@@ -131,7 +139,15 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
-## Forecasting using possible futures
+\begin{textblock}{5.2}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
+\texttt{auscafe \%>\%}\\
+\texttt{  filter(year(date) <= 2018) \%>\%}\\
+\texttt{  model(ETS = ETS(turnover))}
+\end{block}\end{textblock}
+
+\vspace*{10cm}
+
+## Australian monthly café turnover
 
 ```{r samples2, echo=FALSE, dependson='data'}
 p1$data <- train %>% filter(year(date) >= 2015)
@@ -148,7 +164,7 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
-## Forecasting using possible futures
+## Australian monthly café turnover
 
 ```{r samples2a, echo=FALSE, dependson='samples2'}
 p1 +
@@ -162,8 +178,7 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
-
-## Forecasting using possible futures
+## Australian monthly café turnover
 
 ```{r samples3, echo=FALSE, dependson='samples2'}
 p1 <- p1 +
@@ -851,7 +866,6 @@ sn_crps
 
 \vspace*{10cm}
 
-
 ## Forecasting many series
 \fontsize{9}{10}\sf
 
@@ -878,44 +892,23 @@ crps %>%
 
 \vspace*{10cm}
 
+## More information
+\fontsize{15}{20}\sf
 
-## Forecasting many series
-\fontsize{9}{10}\sf
+ * Slides and code: **robjhyndman.com/nycr2020**
+ * Packages: **tidyverts.org**
+ * Forecasting textbook using fable package: **OTexts.com/fpp3**
 
-\btwocol
+\begin{textblock}{7}(8.6,4.9)
+\begin{alertblock}{Find me at ...}
+\href{https://twitter.com/robjhyndman}{\faicon{twitter} @robjhyndman}
 
-```{r states_ensemble, echo=TRUE, eval=FALSE}
-cafe %>%
-  filter(year(date) <= 2018) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~
-                  pdq(d=1) + PDQ(D=1)),
-    SNAIVE = SNAIVE(turnover)
-  ) %>%
-  forecast(h = "1 year") %>%
-  summarise(
-    turnover = dist_mixture(
-      turnover[1],
-      turnover[2],
-      weights = c(0.5, 0.5, 0)
-    )
-  ) %>%
-  as_fable(response = "turnover",
-           distribution = turnover) %>%
-  accuracy(
-    data = cafe,
-    measures = list(crps=CRPS, rmse=RMSE)
-  )
-```
+\href{https://github.com/robjhyndman}{\faicon{github}  @robjhyndman}
 
-\etwocol
+\href{https://robjhyndman.com}{\faicon{home} robjhyndman.com}
 
-## Final words
-\fontsize{15}{17}\sf
-
-
-\only<2>{\begin{textblock}{6.3}(9.3,7.8)\begin{alertblock}{}robjhyndman.com/nycr2020\end{alertblock}\end{textblock}}
-
-
+\href{mailto:rob.hyndman@monash.edu}{\faicon{envelope}  rob.hyndman@monash.edu}
+\end{alertblock}
+\end{textblock}
+\vspace*{10cm}
 
