@@ -4,7 +4,7 @@ author: Rob J Hyndman
 date: 14 August 2020
 fontsize: 14pt
 classoption: aspectratio=169
-toc: false
+toc: true
 output:
   binb::monash:
     fig_height: 4.33
@@ -26,27 +26,46 @@ knitr::opts_chunk$set(
 library(fpp3)
 library(distributional)
 library(gganimate)
+library(stringr)
 set.seed(2020 - 08 - 10)
 
 if (file.exists("cafe.rds")) {
   cafe <- readRDS("cafe.rds")
 } else {
-  cafe <- readabs::read_abs(series_id = "A3349870V") %>%
-    select(date, value) %>%
-    mutate(date = yearmonth(date)) %>%
-    as_tsibble(index = date) %>%
+  cafe <- readabs::read_abs(cat_no="8501.0", tables=11) %>%
+    filter(str_detect(series, "takeaway")) %>%
+    mutate(
+      state = str_extract(series, "^Turnover ;  ([A-Za-z\\s]*)*"),
+      state = str_trim(str_remove(state, "Turnover ;  ")),
+      state = recode(state,
+        `Australian Capital Territory` = "ACT",
+        `New South Wales` = "NSW",
+        `Northern Territory` = "NT",
+        Queensland = "QLD",
+        `South Australia` = "SA",
+        Tasmania = "TAS",
+        Victoria = "VIC",
+        `Western Australia` = "WA"
+      ),
+      date = yearmonth(date)
+    ) %>%
+    select(date, state, value) %>%
+    filter(state != "Total") %>%
+    rename(turnover = value) %>%
     filter(
       date >= yearmonth("2006 Jan"),
       date <= yearmonth("2019 Dec")
     ) %>%
-    rename(turnover = value)
+    as_tsibble(index=date, key=state)
   saveRDS(cafe, "cafe.rds")
 }
+auscafe <- cafe %>%
+  summarise(turnover = sum(turnover))
 ```
 
 ```{r samples, echo=FALSE}
 # Training data
-train <- cafe %>%
+train <- auscafe %>%
   filter(year(date) <= 2018)
 # Fit ETS model
 fit <- train %>%
@@ -64,6 +83,8 @@ colours <- tibble(modrep = unique(future$modrep)) %>%
   mutate(col = sample(rainbow(1000)))
 future <- future %>% left_join(colours, by = "modrep")
 ```
+
+# Quantile forecasting
 
 ## Where is Melbourne?
 
@@ -94,6 +115,7 @@ p1 +
 
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
+
 
 ## Forecasting using possible futures
 
@@ -151,7 +173,7 @@ p1 <- p1 +
     color = "gray", alpha = 0.2
   ) +
   annotate("text", x=as.Date("2019-06-01"), y=3200, label="ETS futures", col='gray')
-p1 
+p1
 ```
 
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
@@ -235,7 +257,7 @@ p1
 
 ```{r quantiles3, dependson='quantiles'}
 p1 +
-  geom_line(aes(y = turnover), data = cafe %>% filter(year(date) >= 2018))
+  geom_line(aes(y = turnover), data = auscafe %>% filter(year(date) >= 2018))
 ```
 
 \begin{textblock}{4.2}(11.5,1.5)\fontsize{11}{13}\sf
@@ -247,13 +269,13 @@ p1 +
 ## Evaluating quantile forecasts
 
 \begin{textblock}{9.5}(0.2,1.2)
-\begin{alertblock}{}\vspace*{-0.8cm}
+\begin{alertblock}{}\vspace*{-0.2cm}
 \begin{align*}
 f_{p,t} &= \text{quantile forecast with prob. $p$ at time $t$.}\\
 y_{t} &= \text{observation at time $t$}
 \end{align*}
 \end{alertblock}\vspace*{-0.3cm}
-\uncover<2->{\begin{block}{Quantile score}\vspace*{-0.6cm}
+\uncover<2->{\begin{block}{Quantile score}\vspace*{-0.2cm}
 $$
   Q_{p,t} = \begin{cases}
   2(1 - p) \big|y_t - f_{p,t}\big|, & \text{if $y_{t} < f_{p,t}$}\\
@@ -298,14 +320,29 @@ df %>% ggplot(aes(x = error, y = qpt)) +
   geom_label(data = labels, aes(x = 0, y = 17, label = label)) +
   transition_states(state)
 ```
-  
+
+
+## Let's do some coding
+\fontsize{15}{17}\sf
+
+\begin{textblock}{4.3}(11,.1)\begin{alertblock}{}\centering tidyverts.org\end{alertblock}\end{textblock}
+
+\placefig{2}{1.5}{height=3.5cm, width=14cm, keepaspectratio=true}{tsibble.png}
+\placefig{2}{5.3}{height=3.5cm, width=14cm, keepaspectratio=true}{fable.png}
+
+\placefig{6.7}{1.5}{height=4.2cm, width=14cm, keepaspectratio=true}{earowang.jpg}
+\begin{textblock}{4.7}(10.8,1.5)\begin{block}{}\centering Earo Wang\rlap{\phantom{g}}\end{block}\end{textblock}
+
+\placefig{6.7}{5.3}{height=3.5cm, width=14cm, keepaspectratio=true}{mitch2.jpg}
+\begin{textblock}{4.7}(10.8,5.3)\begin{block}{}\centering Mitchell O'Hara-Wild\rlap{\phantom{g}}\end{block}\end{textblock}
+
 ## Evaluating quantile forecasts
 \fontsize{9}{10}\sf
 
 \btwocol
 
 ```{r crps0, echo=TRUE}
-cafe 
+auscafe
 ```
 
 \etwocol
@@ -318,7 +355,7 @@ cafe
 \btwocol
 
 ```{r crps1, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018)
 ```
 
@@ -331,11 +368,11 @@ cafe %>%
 \btwocol
 
 ```{r crps2, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   )
 ```
@@ -350,11 +387,11 @@ cafe %>%
 \btwocol
 
 ```{r crps3, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year")
@@ -370,16 +407,16 @@ cafe %>%
 \btwocol
 
 ```{r crps4, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   accuracy(
-    data = cafe, 
+    data = auscafe,
     measures = list(crps=CRPS, rmse=RMSE)
   ) %>%
   arrange(crps)
@@ -389,32 +426,34 @@ cafe %>%
 
 \vspace*{10cm}
 
+# Ensemble forecasting
+
 ## Ensemble forecasting
 \fontsize{11}{12}\sf
 
-**Ensemble forecasting** involves combining the forecast distributions from multiple models. 
+\alert{\textbf{Ensemble forecasting}}: **mix the forecast distributions from multiple models.**
 
   * “All models are wrong, but some are useful” (George Box, 1976)
-  * Allows diverse models to be included, while reducing impact of any specific model. 
+  * Allows diverse models to be included, while reducing impact of any specific model.
   * Allows uncertainty of model selection to be incorporated.
 
 ```{r ensemble_samples, echo=FALSE, fig.height=2.6}
-fit <- cafe %>%
+fit <- auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   )
 future <- fit %>%
   generate(times = 10, h = "1 year")
-cafe %>%
+auscafe %>%
   filter(year(date) >= 2014, year(date) <= 2018) %>%
   autoplot(turnover) +
   geom_line(data = future %>% mutate(modrep = paste0(.model, .rep)), aes(y = .sim, col = .model, group = c(modrep))) +
   labs(x = "Month", y = "Turnover (A$million)") +
   guides(colour = guide_legend("Model"))
-```  
+```
 
 ## Ensemble forecasting
 \fontsize{9}{10}\sf
@@ -422,11 +461,11 @@ cafe %>%
 \btwocol
 
 ```{r ensemble1, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 years")
@@ -442,18 +481,18 @@ cafe %>%
 \btwocol
 
 ```{r ensemble2, echo=TRUE, dependson='ensemble1a'}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1], 
-      turnover[2], 
+      turnover[1],
+      turnover[2],
       weights = c(0.5, 0.5)
     )
   )
@@ -469,22 +508,22 @@ cafe %>%
 \btwocol
 
 ```{r ensemble3, echo=TRUE, dependson='ensemble1a'}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1], 
-      turnover[2], 
+      turnover[1],
+      turnover[2],
       weights = c(0.5, 0.5)
     )
   ) %>%
-  as_fable(response = "turnover", 
+  as_fable(response = "turnover",
            distribution = turnover)
 ```
 
@@ -498,25 +537,25 @@ cafe %>%
 \btwocol
 
 ```{r ensemble4, echo=TRUE, dependson='ensemble2a'}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1], 
-      turnover[2], 
+      turnover[1],
+      turnover[2],
       weights = c(0.5, 0.5)
     )
   ) %>%
-  as_fable(response = "turnover", 
+  as_fable(response = "turnover",
            distribution = turnover) %>%
   accuracy(
-    data = cafe, 
+    data = auscafe,
     measures = list(crps=CRPS, rmse=RMSE)
   )
 ```
@@ -530,12 +569,14 @@ cafe %>%
 
 \vspace*{10cm}
 
+# Combination forecasting
+
 ## Combination forecasting
 \fontsize{13}{15}\sf
 
-**Combination forecasting**: weighted averages of forecasts from multiple models. 
+\alert{\textbf{Combination forecasting}}: **take weighted average of forecasts from multiple models.**
 
-  * Often a simple average is used. 
+  * Often a simple average is used.
   * Reduces uncertainty associated with selecting a particular model.
   * Combination forecasting usually improves point forecast accuracy.
   * Mean forecast identical to that from corresponding weighted ensemble.
@@ -547,13 +588,13 @@ cafe %>%
 \btwocol
 
 ```{r combinations1, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
-  ) 
+  )
 ```
 
 \etwocol
@@ -566,11 +607,11 @@ cafe %>%
 \btwocol
 
 ```{r combinations2, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   mutate(COMB = (ETS + ARIMA)/2)
@@ -586,15 +627,15 @@ cafe %>%
 \btwocol
 
 ```{r combinations3, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   mutate(COMB = (ETS + ARIMA)/2) %>%
-  forecast(h = "1 year") 
+  forecast(h = "1 year")
 ```
 
 \etwocol
@@ -607,17 +648,17 @@ cafe %>%
 \btwocol
 
 ```{r combinations4, echo=TRUE}
-cafe %>%
+auscafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ 
+    ARIMA = ARIMA(turnover ~
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   mutate(COMB = (ETS + ARIMA)/2) %>%
   forecast(h = "1 year") %>%
   accuracy(
-    data = cafe, 
+    data = auscafe,
     measures = list(crps=CRPS, rmse=RMSE)
   ) %>%
   arrange(crps)
@@ -627,15 +668,252 @@ cafe %>%
 
 \vspace*{10cm}
 
+# Forecasting many series
 
-## fable packages
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states1, echo=TRUE}
+cafe
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+```{r states_plot2, include=FALSE}
+pdf(file = "figs/state_plot.pdf", width=22/2.54, height=10/2.54)
+p <- cafe %>% 
+  autoplot(turnover) +
+  labs(
+    x = "Month",
+    y = "Turnover (A$million)",
+    title = "Australian monthly café turnover"
+  ) 
+print(p)
+crop::dev.off.crop()
+```
+
+\btwocol
+
+```{r states_plot, echo=TRUE, eval=FALSE}
+cafe %>% autoplot(turnover)
+```
+
+\etwocol
+
+\placefig{1}{2.4}{width=15cm}{state_plot}
+
+\vspace*{10cm}
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states2, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018)
+```
+
+\etwocol
+
+\vspace*{10cm}
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states3, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
+  mutate(
+    COMB = (ETS+ARIMA)/2
+  )
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states4, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
+  mutate(
+    COMB = (ETS+ARIMA)/2
+  ) %>%
+  forecast(h = "1 year")
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states5, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
+  mutate(
+    COMB = (ETS+ARIMA)/2
+  ) %>%
+  forecast(h = "1 year") %>%
+  accuracy(
+    data = cafe,
+    measures = list(crps=CRPS, rmse=RMSE)
+  )
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states6, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
+  mutate(
+    COMB = (ETS+ARIMA)/2
+  ) %>%
+  forecast(h = "1 year") %>%
+  accuracy(
+    data = cafe,
+    measures = list(crps=CRPS, rmse=RMSE)
+  ) ->
+  crps
+```
+
+```{r states7, echo=FALSE}
+crps
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states8, echo=TRUE}
+sn_crps <- crps %>% 
+  filter(.model=="SNAIVE") %>% 
+  select(state,crps) %>%
+  rename(sn_crps = "crps")
+sn_crps
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states9, echo=TRUE}
+sn_crps <- crps %>% 
+  filter(.model=="SNAIVE") %>% 
+  select(state,crps) %>%
+  rename(sn_crps = "crps")
+crps %>%
+  filter(.model != "SNAIVE") %>%
+  left_join(sn_crps, by="state") %>%
+  mutate(
+    skill = 100*(sn_crps - crps)/sn_crps
+  ) %>%
+  group_by(.model) %>%
+  summarise(
+    skill = mean(skill)
+  )
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+
+## Forecasting many series
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r states_ensemble, echo=TRUE, eval=FALSE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
+  forecast(h = "1 year") %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1],
+      turnover[2],
+      weights = c(0.5, 0.5, 0)
+    )
+  ) %>%
+  as_fable(response = "turnover",
+           distribution = turnover) %>%
+  accuracy(
+    data = cafe,
+    measures = list(crps=CRPS, rmse=RMSE)
+  )
+```
+
+\etwocol
+
+## Final words
 \fontsize{15}{17}\sf
 
-\placefig{2}{1.5}{height=5cm, width=14cm, keepaspectratio=true}{fable.png}
-\begin{textblock}{4.3}(2,6.5)\begin{block}{}\centering fable.tidyverts.org\end{block}\end{textblock}
-
-\placefig{8.7}{1.5}{height=5cm, width=14cm, keepaspectratio=true}{mitch2.jpg}
-\begin{textblock}{4.7}(8.8,6.5)\begin{block}{}\centering Mitchell O'Hara-Wild\rlap{\phantom{g}}\end{block}\end{textblock}
 
 \only<2>{\begin{textblock}{6.3}(9.3,7.8)\begin{alertblock}{}robjhyndman.com/nycr2020\end{alertblock}\end{textblock}}
 
