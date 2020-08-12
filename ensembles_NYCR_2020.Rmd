@@ -210,7 +210,7 @@ p1 +
 
 ```{r quantiles, dependson='samples3'}
 qf <- fit %>%
-  generate(times = 1000, h = "2 years") %>%
+  generate(times = 1000, h = "1 year") %>%
   as_tibble() %>%
   group_by(date) %>%
   summarise(
