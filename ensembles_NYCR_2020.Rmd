@@ -44,21 +44,19 @@ if (file.exists("cafe.rds")) {
 }
 ```
 
-## Forecasting using possible futures
-
 ```{r samples, echo=FALSE}
 # Training data
 train <- cafe %>%
-  filter(year(date) <= 2017)
+  filter(year(date) <= 2018)
 # Fit ETS model
 fit <- train %>%
   model(ETS = ETS(turnover))
 # Forecasts
 fc <- fit %>%
-  forecast(h = "2 years")
+  forecast(h = "1 year")
 # Future sample paths
 future <- fit %>%
-  generate(times = 1000, h = "2 years") %>%
+  generate(times = 1000, h = "1 year") %>%
   as_tibble() %>%
   mutate(modrep = paste0(.model, .rep))
 # Colours for sample paths. Need to permute to avoid all similar colours on top in graph
@@ -67,25 +65,53 @@ colours <- tibble(modrep = unique(future$modrep)) %>%
 future <- future %>% left_join(colours, by = "modrep")
 ```
 
-```{r plots, echo=FALSE}
+## Where is Melbourne?
+
+\only<1>{\placefig{0.5}{1.3}{height=8cm,width=15cm}{melbourne-location-on-the-us-map}}
+\only<2-4>{\placefig{0.5}{1.3}{height=8cm,width=15cm}{melbourne-location-on-the-australia-map}}
+\begin{textblock}{12.5}(1.9,8.6)\fontsize{7}{8}\sf\url{ontheworldmap.com}\end{textblock}
+\only<3-4>{\placefig{11.4}{1.5}{width=4.5cm}{coffee}}
+\only<4>{\placefig{11.4}{4.5}{width=4.5cm}{degraves}}
+
+## Australian monthly café turnover
+
+```{r data, echo=FALSE, dependson='samples'}
 p1 <- train %>%
   autoplot(turnover) +
   labs(
     x = "Month",
     y = "Turnover (A$million)",
-    title = "Australian monthly café turnover: ETS futures"
+    title = "Australian monthly café turnover"
   ) +
   guides(colour = FALSE, level = FALSE)
 p1 +
   geom_line(
     data = filter(future, as.numeric(.rep) <= 5),
     aes(y = .sim, col = col, group = c(modrep)),
+    alpha = 0
   )
 ```
 
+\placefig{11.4}{1.5}{width=4.5cm}{coffee}
+\placefig{11.4}{4.5}{width=4.5cm}{degraves}
+
 ## Forecasting using possible futures
 
-```{r samples2, echo=FALSE, dependson='samples'}
+```{r plots, echo=FALSE, dependson="data"}
+p1 +
+  geom_line(
+    data = filter(future, as.numeric(.rep) <= 5),
+    aes(y = .sim, col = col, group = c(modrep))
+  ) +
+  annotate("text", x=as.Date("2019-06-01"), y=3200, label="ETS futures")
+```
+
+\placefig{11.4}{1.5}{width=4.5cm}{coffee}
+\placefig{11.4}{4.5}{width=4.5cm}{degraves}
+
+## Forecasting using possible futures
+
+```{r samples2, echo=FALSE, dependson='data'}
 p1$data <- train %>% filter(year(date) >= 2015)
 p1 <- p1 +
   ylim(min(p1$data$turnover), max(future$.sim))
@@ -93,18 +119,26 @@ p1 +
   geom_line(
     data = filter(future, as.numeric(.rep) <= 5),
     aes(y = .sim, col = col, group = c(modrep)),
-  )
+  ) +
+  annotate("text", x=as.Date("2019-06-01"), y=3200, label="ETS futures")
 ```
+
+\placefig{11.4}{1.5}{width=4.5cm}{coffee}
+\placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
 ## Forecasting using possible futures
 
-```{r samples2a, echo=FALSE, dependson='samples'}
+```{r samples2a, echo=FALSE, dependson='samples2'}
 p1 +
   geom_line(
     data = filter(future),
     aes(y = .sim, col = col, group = c(modrep)),
-  )
+  ) +
+  annotate("text", x=as.Date("2019-06-01"), y=3200, label="ETS futures")
 ```
+
+\placefig{11.4}{1.5}{width=4.5cm}{coffee}
+\placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
 
 ## Forecasting using possible futures
@@ -115,9 +149,13 @@ p1 <- p1 +
     data = future,
     aes(y = .sim, group = modrep),
     color = "gray", alpha = 0.2
-  )
-p1
+  ) +
+  annotate("text", x=as.Date("2019-06-01"), y=3200, label="ETS futures", col='gray')
+p1 
 ```
+
+\placefig{11.4}{1.5}{width=4.5cm}{coffee}
+\placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
 ## Forecasting using possible futures
 
@@ -264,55 +302,90 @@ df %>% ggplot(aes(x = error, y = qpt)) +
 ## Evaluating quantile forecasts
 \fontsize{9}{10}\sf
 
-```{r crps1, echo=TRUE}
-cafe %>%
-  filter(year(date) <= 2017)
+\btwocol
+
+```{r crps0, echo=TRUE}
+cafe 
 ```
+
+\etwocol
 
 \vspace*{10cm}
 
 ## Evaluating quantile forecasts
 \fontsize{9}{10}\sf
+
+\btwocol
+
+```{r crps1, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018)
+```
+
+\etwocol
+
+\vspace*{10cm}
+## Evaluating quantile forecasts
+\fontsize{9}{10}\sf
+
+\btwocol
 
 ```{r crps2, echo=TRUE}
 cafe %>%
-  filter(year(date) <= 2017) %>%
+  filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   )
 ```
 
+\etwocol
+
 \vspace*{10cm}
 
 ## Evaluating quantile forecasts
 \fontsize{9}{10}\sf
+
+\btwocol
 
 ```{r crps3, echo=TRUE}
 cafe %>%
-  filter(year(date) <= 2017) %>%
+  filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   ) %>%
-  forecast(h = "2 years")
+  forecast(h = "1 year")
 ```
+
+\etwocol
 
 \vspace*{10cm}
 
 ## Evaluating quantile forecasts
 \fontsize{9}{10}\sf
 
+\btwocol
+
 ```{r crps4, echo=TRUE}
 cafe %>%
-  filter(year(date) <= 2017) %>%
+  filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   ) %>%
-  forecast(h = "2 years") %>%
-  accuracy(cafe, measures = list(CRPS = CRPS))
+  forecast(h = "1 year") %>%
+  accuracy(
+    data = cafe, 
+    measures = list(crps=CRPS, rmse=RMSE)
+  ) %>%
+  arrange(crps)
 ```
+
+\etwocol
 
 \vspace*{10cm}
 
@@ -327,15 +400,16 @@ cafe %>%
 
 ```{r ensemble_samples, echo=FALSE, fig.height=2.6}
 fit <- cafe %>%
-  filter(year(date) <= 2017) %>%
+  filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   )
 future <- fit %>%
-  generate(times = 10, h = "2 years")
+  generate(times = 10, h = "1 year")
 cafe %>%
-  filter(year(date) >= 2014, year(date) <= 2017) %>%
+  filter(year(date) >= 2014, year(date) <= 2018) %>%
   autoplot(turnover) +
   geom_line(data = future %>% mutate(modrep = paste0(.model, .rep)), aes(y = .sim, col = .model, group = c(modrep))) +
   labs(x = "Month", y = "Turnover (A$million)") +
@@ -345,119 +419,225 @@ cafe %>%
 ## Ensemble forecasting
 \fontsize{9}{10}\sf
 
+\btwocol
+
 ```{r ensemble1, echo=TRUE}
 cafe %>%
-  filter(year(date) <= 2017) %>%
+  filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   ) %>%
-  forecast(h = "2 years")
+  forecast(h = "1 years")
 ```
+
+\etwocol
 
 \vspace*{10cm}
 
 ## Ensemble forecasting
 \fontsize{9}{10}\sf
 
-```{r ensemble1a, echo=TRUE}
-cafe %>%
-  filter(year(date) <= 2017) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
-  ) %>%
-  forecast(h = "2 years") -> fc
-```
-
-```{r ensemble1b, echo=FALSE}
-cafe %>%
-  filter(year(date) <= 2017) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1))
-  ) %>%
-  forecast(h = "2 years")
-```
-
-\vspace*{10cm}
-
-## Ensemble forecasting
-\fontsize{9}{10}\sf
+\btwocol
 
 ```{r ensemble2, echo=TRUE, dependson='ensemble1a'}
-fc %>%
-  summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
-    .mean = mean(turnover)
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   ) %>%
-  as_fable(response = "turnover", distribution = turnover)
+  forecast(h = "1 year") %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1], 
+      turnover[2], 
+      weights = c(0.5, 0.5)
+    )
+  )
 ```
+
+\etwocol
+
+\vspace*{10cm}
 
 ## Ensemble forecasting
 \fontsize{9}{10}\sf
 
-```{r ensemble2a, echo=TRUE, dependson='ensemble1a'}
-fc %>%
-  summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
-    .mean = mean(turnover)
+\btwocol
+
+```{r ensemble3, echo=TRUE, dependson='ensemble1a'}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
   ) %>%
-  as_fable(response = "turnover", distribution = turnover) -> ensemble
+  forecast(h = "1 year") %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1], 
+      turnover[2], 
+      weights = c(0.5, 0.5)
+    )
+  ) %>%
+  as_fable(response = "turnover", 
+           distribution = turnover)
 ```
 
-```{r ensemble2b, echo=FALSE, dependson='ensemble1a'}
-fc %>%
-  summarise(
-    turnover = dist_mixture(turnover[1], turnover[2], weights = c(0.5, 0.5)),
-    .mean = mean(turnover)
-  ) %>%
-  as_fable(response = "turnover", distribution = turnover)
-```
+\etwocol
 
+\vspace*{10cm}
 
 ## Ensemble forecasting
 \fontsize{9}{10}\sf
 
-```{r ensemble3, echo=TRUE, dependson='ensemble2a'}
-ensemble %>%
-  accuracy(cafe, measures = list(CRPS = CRPS))
+\btwocol
+
+```{r ensemble4, echo=TRUE, dependson='ensemble2a'}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
+  ) %>%
+  forecast(h = "1 year") %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1], 
+      turnover[2], 
+      weights = c(0.5, 0.5)
+    )
+  ) %>%
+  as_fable(response = "turnover", 
+           distribution = turnover) %>%
+  accuracy(
+    data = cafe, 
+    measures = list(crps=CRPS, rmse=RMSE)
+  )
 ```
 
-\fontsize{14}{16}\sf
+\pause\color{Orange}\textbf{Comparison:}
 
- * In this case, the ensemble forecasts are slightly worse than the ETS forecasts.
- * 
+```{r crps_comparison, ref.label="crps4", echo=FALSE}
+```
+
+\etwocol
+
+\vspace*{10cm}
 
 ## Combination forecasting
+\fontsize{13}{15}\sf
 
-Combination forecasting is a related idea that is more widely used in the general forecasting community. This involves taking a weighted average of the forecasts produced from the component models. Often a simple average is used. For more than 50 years we have known that combination forecasting improves forecast accuracy [@Bates1969-dp;@Clemen1989-fz]. One of the reasons for this is that the combination decreases the variance of the forecasts [@Hibon2005-cv] by reducing the uncertainty associated with selecting a particular model.
+**Combination forecasting**: weighted averages of forecasts from multiple models. 
 
-Combinations are almost always used to produce point forecasts, not probabilistic forecasts. A weighted average of several component forecasts gives a point forecast that is identical to taking the mean of the sample paths from the corresponding weighted ensemble.
+  * Often a simple average is used. 
+  * Reduces uncertainty associated with selecting a particular model.
+  * Combination forecasting usually improves point forecast accuracy.
+  * Mean forecast identical to that from corresponding weighted ensemble.
+  * Quantile forecasts need to account for correlations between forecast errors from component models.
 
-However, the idea can be used more generally to obtain quantile forecasts as well. Quantiles can not simply be averaged, so we need to take account of the correlations between the forecast errors from the component models when producing quantile forecasts. This is implemented in the `fable` package for R. For the Australian café data, this gives the following result.
+## Combination forecasting
+\fontsize{9}{10}\sf
 
-```{r combinations}
-fit %>%
-  mutate(COMBINATION = (ETS + ARIMA) / 2) %>%
-  forecast(h = "1 year") %>%
-  filter(.model == "COMBINATION") %>%
-  accuracy(cafe, measures = list(CRPS = CRPS))
+\btwocol
+
+```{r combinations1, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
+  ) 
 ```
 
-Further improvement has been obtained by taking account of the similarity of the ETS and ARIMA forecasts, rather than simply combining the sample paths as with ensemble forecasting.
+\etwocol
 
-## Conclusions
+\vspace*{10cm}
 
-I have described several tools for forecasting that are likely to be increasingly used in business forecasting in the future.
+## Combination forecasting
+\fontsize{9}{10}\sf
 
- * Simulated future sample paths allow us to study how the future might evolve, and allow us to answer more complicated forecasting questions than is possible with analytical methods.
- * Quantile forecasts can be produced from these simulated future sample paths and provide a way of quantifying the forecast distributions.
- * Quantile scores allow us to evaluate quantile forecasts. Averaging quantile scores gives the CRPS which allows us to evaluate the whole forecast distribution.
- * Forecast ensembles combine information from multiple models and often provide a better estimate of future uncertainty than any individual model.
- * Forecast combinations are similar to ensembles but also take account of the relationships between the component models. The best forecasts often come from combining models in this way.
+\btwocol
+
+```{r combinations2, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
+  ) %>%
+  mutate(COMB = (ETS + ARIMA)/2)
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+## Combination forecasting
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r combinations3, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
+  ) %>%
+  mutate(COMB = (ETS + ARIMA)/2) %>%
+  forecast(h = "1 year") 
+```
+
+\etwocol
+
+\vspace*{10cm}
+
+## Combination forecasting
+\fontsize{9}{10}\sf
+
+\btwocol
+
+```{r combinations4, echo=TRUE}
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~ 
+                  pdq(d=1) + PDQ(D=1))
+  ) %>%
+  mutate(COMB = (ETS + ARIMA)/2) %>%
+  forecast(h = "1 year") %>%
+  accuracy(
+    data = cafe, 
+    measures = list(crps=CRPS, rmse=RMSE)
+  ) %>%
+  arrange(crps)
+```
+
+\etwocol
+
+\vspace*{10cm}
 
 
-## Supplements
+## fable packages
+\fontsize{15}{17}\sf
 
-All the forecasts and calculations produced in this chapter were obtained with the `fable` package for R. The code used is available at https://github.com/robjhyndman/quantile_ensembles.
+\placefig{2}{1.5}{height=5cm, width=14cm, keepaspectratio=true}{fable.png}
+\begin{textblock}{4.3}(2,6.5)\begin{block}{}\centering fable.tidyverts.org\end{block}\end{textblock}
+
+\placefig{8.7}{1.5}{height=5cm, width=14cm, keepaspectratio=true}{mitch2.jpg}
+\begin{textblock}{4.7}(8.8,6.5)\begin{block}{}\centering Mitchell O'Hara-Wild\rlap{\phantom{g}}\end{block}\end{textblock}
+
+\only<2>{\begin{textblock}{6.3}(9.3,7.8)\begin{alertblock}{}robjhyndman.com/nycr2020\end{alertblock}\end{textblock}}
+
+
+
