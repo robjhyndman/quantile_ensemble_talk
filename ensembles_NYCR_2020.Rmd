@@ -467,7 +467,7 @@ auscafe %>%
   autoplot(turnover) +
   geom_line(data = future %>% mutate(modrep = paste0(.model, .rep)), aes(y = .sim, col = .model, group = c(modrep))) +
   labs(x = "Month", y = "Turnover (A$million)") +
-  guides(colour = guide_legend("Model")) 
+  guides(colour = guide_legend("Model"))
 ```
 
 ## Ensemble forecasting
@@ -507,7 +507,7 @@ auscafe %>%
                 turnover[1], turnover[2],
                 weights=c(0.5,0.5))
   ) %>%
-  mutate(.model = "ENSEMBLE") 
+  mutate(.model = "ENSEMBLE")
 ```
 
 \etwocol
@@ -686,7 +686,7 @@ combination  <- fc %>%
   select(date,.model,turnover)
 fc2 <- bind_rows(ensemble, combination) %>%
   mutate(.model = factor(.model, levels=c("Combination","Ensemble"))) %>%
-  as_fable(index=date, key=.model, distribution=turnover, response="turnover") 
+  as_fable(index=date, key=.model, distribution=turnover, response="turnover")
 fc2 %>% autoplot(train %>% filter(year(date) >= 2017))
 ```
 
@@ -695,7 +695,7 @@ fc2 %>% autoplot(train %>% filter(year(date) >= 2017))
 
 ```{r comparison2, eval=TRUE, dependson='samples'}
 fc2 %>% autoplot(train %>% filter(year(date) >= 2017)) +
-  autolayer(filter(fc2, .model=="Combination"), color='red') 
+  autolayer(filter(fc2, .model=="Combination"), color='red')
 ```
 
 ## Combination vs ensemble forecasting
@@ -710,19 +710,19 @@ fc_combined <- tibble(
 fc_base <- tidyr::expand_grid(
     .model = c("Combination", "Mixture"),
     dist = c(dist_normal(3700, 80), dist_normal(3900, 120)),
-  ) %>% 
+  ) %>%
   mutate(.base = rep(c("ETS", "ARIMA"), 2))
 
-ggplot() + 
+ggplot() +
   stat_dist_slab(aes(dist = dist, y = ""), data = fc_combined) +
-  stat_dist_slab(aes(dist = dist, y = "", colour = .base), size = 0.3, fill = NA, data = fc_base) + 
+  stat_dist_slab(aes(dist = dist, y = "", colour = .base), size = 0.3, fill = NA, data = fc_base) +
   geom_vline(aes(xintercept = mu, linetype = "Mean"), mutate(fc_combined, mu = mean(dist))) +
   geom_vline(aes(xintercept = median, linetype = "Median"), mutate(fc_combined, median = median(dist))) +
   coord_cartesian(expand = FALSE) +
   facet_grid(vars(.model), switch = "y") +
   theme(legend.position = "bottom") +
   labs(y = NULL, x = NULL, colour = "Model", linetype = "Forecast") +
-  scale_colour_brewer(palette = "Dark2")   
+  scale_colour_brewer(palette = "Dark2")
 ```
 
 \only<2->{\begin{textblock}{4.3}(11.4,2)
@@ -887,7 +887,7 @@ cafe %>%
   forecast(h = "1 year") %>%
   accuracy(data = cafe,
     measures = list(ss=skill_score(CRPS))
-  ) 
+  )
 ```
 
 \etwocol
@@ -937,7 +937,7 @@ Skill score is relative to seasonal naive forecasts
 ## More information
 \fontsize{15}{20}\sf
 
- * Slides and code: **robjhyndman.com/nycr2020**
+ * Slides and code: **robjhyndman.com/nyrc2020**
  * Packages: **tidyverts.org**
  * Forecasting textbook using fable package: **OTexts.com/fpp3**
 
