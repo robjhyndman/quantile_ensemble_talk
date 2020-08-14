@@ -8,7 +8,7 @@ cafe %>%
   autoplot(turnover) +
   scale_y_log10()
 
-cafe %>%
+fc <- cafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
@@ -18,25 +18,16 @@ cafe %>%
   mutate(
     COMB = (ETS + ARIMA) / 2
   ) %>%
-  forecast(h = "1 year") %>%
+  forecast(h = "1 year")
+
+fc %>%
   accuracy(
     data = cafe,
-    measures = list(crps = CRPS, rmse = RMSE)
-  ) ->
-  crps
-
-sn_crps <- crps %>%
-  filter(.model == "SNAIVE") %>%
-  select(state, crps) %>%
-  rename(sn_crps = "crps")
-
-crps %>%
-  filter(.model != "SNAIVE") %>%
-  left_join(sn_crps, by = "state") %>%
-  mutate(
-    skill = 100 * (sn_crps - crps) / sn_crps
+    measures = list(
+      crps = CRPS,
+      rmse = RMSE,
+      ss=skill_score(CRPS)
+    )
   ) %>%
   group_by(.model) %>%
-  summarise(
-    skill = mean(skill)
-  )
+  summarise(sspc = mean(ss) * 100)

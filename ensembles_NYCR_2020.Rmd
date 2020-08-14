@@ -31,10 +31,6 @@ library(gganimate)
 library(stringr)
 library(ggdist)
 set.seed(2020 - 08 - 10)
-scale_colour_discrete <- function(...) {
-  scale_colour_manual(..., values = c("#e66100","#5d3a9b"))
-}
-
 
 if (file.exists("cafe.rds")) {
   cafe <- readRDS("cafe.rds")
@@ -696,7 +692,7 @@ auscafe %>%
 ## Combination vs ensemble forecasting
 \fontsize{9}{10}\sf
 
-```{r comparison1, eval=TRUE, dependson='samples'}
+```{r comparison1, eval=TRUE}
 train <- auscafe %>%
   filter(year(date) <= 2018)
 fc <- train %>%
@@ -724,19 +720,15 @@ combination  <- fc %>%
 fc2 <- bind_rows(ensemble, combination) %>%
   mutate(.model = factor(.model, levels=c("Combination","Ensemble"))) %>%
   as_fable(index=date, key=.model, distribution=turnover, response="turnover") 
-fc2 %>% autoplot(train %>% filter(year(date) >= 2017)) +
-  autolayer(filter(fc2, .model=="Combination"), color='#DC3220') +
-  autolayer(filter(fc2, .model=="Ensemble"), color='#E66100') 
+fc2 %>% autoplot(train %>% filter(year(date) >= 2017))
 ```
-
 
 ## Combination vs ensemble forecasting
 \fontsize{9}{10}\sf
 
 ```{r comparison2, eval=TRUE, dependson='samples'}
 fc2 %>% autoplot(train %>% filter(year(date) >= 2017)) +
-  autolayer(filter(fc2, .model=="Ensemble"), color='#E66100') + 
-  autolayer(filter(fc2, .model=="Combination"), color='#DC3220') 
+  autolayer(filter(fc2, .model=="Combination"), color='red') 
 ```
 
 ## Combination vs ensemble forecasting
@@ -749,9 +741,9 @@ fc_combined <- tibble(
            dist_mixture(dist_normal(3700, 80), dist_normal(3900, 120), weights = c(0.5, 0.5)))
 )
 fc_base <- tidyr::expand_grid(
-  .model = c("Combination", "Mixture"),
-  dist = c(dist_normal(3700, 80), dist_normal(3900, 120)),
-) %>% 
+    .model = c("Combination", "Mixture"),
+    dist = c(dist_normal(3700, 80), dist_normal(3900, 120)),
+  ) %>% 
   mutate(.base = rep(c("ETS", "ARIMA"), 2))
 
 ggplot() + 
@@ -762,14 +754,15 @@ ggplot() +
   coord_cartesian(expand = FALSE) +
   facet_grid(vars(.model), switch = "y") +
   theme(legend.position = "bottom") +
-  labs(y = NULL, x = NULL, colour = "Model", linetype = "Forecast")
+  labs(y = NULL, x = NULL, colour = "Model", linetype = "Forecast") +
+  scale_colour_brewer(palette = "Dark2")   
 ```
 
 \only<2->{\begin{textblock}{4.3}(11.4,2)
 \begin{block}{}
 \begin{itemize}
-\item Combinations involve averaging the distributions.
-\item Ensembles involve mixing the distributions.
+\item Combinations involve averaging the distributions, taking account of correlations between distributions.
+\item Ensembles involve mixing the distributions, ignoring correlations between distributions.
 \item The means are the same, but other characteristics are different.
 \end{itemize}
 \end{block}
@@ -897,8 +890,7 @@ cafe %>%
     COMB = (ETS+ARIMA)/2
   ) %>%
   forecast(h = "1 year") %>%
-  accuracy(
-    data = cafe,
+  accuracy(data = cafe,
     measures = list(crps=CRPS, rmse=RMSE)
   )
 ```
@@ -926,20 +918,18 @@ cafe %>%
     COMB = (ETS+ARIMA)/2
   ) %>%
   forecast(h = "1 year") %>%
-  accuracy(
-    data = cafe,
-    measures = list(crps=CRPS, rmse=RMSE)
-  ) ->
-  crps
-```
-
-```{r states7, echo=FALSE}
-crps
+  accuracy(data = cafe,
+    measures = list(ss=skill_score(CRPS))
+  ) 
 ```
 
 \etwocol
 
 \vspace*{10cm}
+
+\only<2>{\begin{textblock}{6}(9,7.2)\begin{block}{}\fontsize{14}{16}\sf
+Skill score is relative to seasonal naive forecasts
+\end{block}\end{textblock}}
 
 
 ## Forecasting many series
@@ -948,42 +938,34 @@ crps
 \btwocol
 
 ```{r states8, echo=TRUE}
-sn_crps <- crps %>%
-  filter(.model=="SNAIVE") %>%
-  select(state,crps) %>%
-  rename(sn_crps = "crps")
-sn_crps
-```
-
-\etwocol
-
-\vspace*{10cm}
-
-## Forecasting many series
-\fontsize{9}{10}\sf
-
-\btwocol
-
-```{r states9, echo=TRUE}
-sn_crps <- crps %>%
-  filter(.model=="SNAIVE") %>%
-  select(state,crps) %>%
-  rename(sn_crps = "crps")
-crps %>%
-  filter(.model != "SNAIVE") %>%
-  left_join(sn_crps, by="state") %>%
+cafe %>%
+  filter(year(date) <= 2018) %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1)),
+    SNAIVE = SNAIVE(turnover)
+  ) %>%
   mutate(
-    skill = 100*(sn_crps - crps)/sn_crps
+    COMB = (ETS+ARIMA)/2
+  ) %>%
+  forecast(h = "1 year") %>%
+  accuracy(data = cafe,
+    measures = list(ss=skill_score(CRPS))
   ) %>%
   group_by(.model) %>%
-  summarise(
-    skill = mean(skill)
-  )
+  summarise(sspc = mean(ss) * 100)
 ```
 
 \etwocol
 
 \vspace*{10cm}
+
+\begin{textblock}{6}(9,7.2)\begin{block}{}\fontsize{14}{16}\sf
+Skill score is relative to seasonal naive forecasts
+\end{block}\end{textblock}
+
+
 
 ## More information
 \fontsize{15}{20}\sf
