@@ -24,11 +24,17 @@ knitr::opts_chunk$set(
   cache = TRUE,
   dev.args = list(bg = grey(0.9), pointsize = 11)
 )
+options(width=45)
 library(fpp3)
 library(distributional)
 library(gganimate)
 library(stringr)
+library(ggdist)
 set.seed(2020 - 08 - 10)
+scale_colour_discrete <- function(...) {
+  scale_colour_manual(..., values = c("#e66100","#5d3a9b"))
+}
+
 
 if (file.exists("cafe.rds")) {
   cafe <- readRDS("cafe.rds")
@@ -85,6 +91,13 @@ colours <- tibble(modrep = unique(future$modrep)) %>%
 future <- future %>% left_join(colours, by = "modrep")
 ```
 
+```{r, echo=FALSE, eval=FALSE}
+train %>%
+  model(ETS = ETS(turnover)) %>%
+  generate(times=10, h="1 year")  %>%
+  autoplot() + autolayer(train)
+```
+
 # Quantile forecasting
 
 ## Where is Melbourne?
@@ -117,10 +130,9 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
-\only<2>{\begin{textblock}{5.2}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
-\texttt{auscafe \%>\%}\\
-\texttt{  filter(year(date) <= 2018) \%>\%}\\
-\texttt{  model(ETS = ETS(turnover))}
+\only<2>{\begin{textblock}{5.7}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
+\texttt{train \%>\%}\\
+\texttt{  autoplot(turnover)}
 \end{block}\end{textblock}}
 
 \vspace*{10cm}
@@ -139,11 +151,11 @@ p1 +
 \placefig{11.4}{1.5}{width=4.5cm}{coffee}
 \placefig{11.4}{4.5}{width=4.5cm}{degraves}
 
-\begin{textblock}{5.2}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
-\texttt{auscafe \%>\%}\\
-\texttt{  filter(year(date) <= 2018) \%>\%}\\
-\texttt{  model(ETS = ETS(turnover))}
-\end{block}\end{textblock}
+\begin{textblock}{5.7}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
+\texttt{train \%>\%}\\
+\texttt{  model(ETS = ETS(turnover))}\\
+\texttt{  generate(times=5, h="1 year") \%>\%}\\
+\texttt{  autoplot() + autolayer(train)}\end{block}\end{textblock}
 
 \vspace*{10cm}
 
@@ -301,10 +313,10 @@ $$
 \begin{textblock}{15}(0.2,5.6)
 \uncover<4->{
 \begin{itemize}\itemsep=0cm\parskip=0cm
-\item Low $Q_p$ is good
+\item Low $Q_{p,t}$ is good
 \item Multiplier of 2 often omitted, but useful for interpretation
-\item $Q_p$ like absolute error (weighted to account for likely exceedance)
-\item Average $Q_p$ = CRPS (Continuous Rank Probability Score)
+\item $Q_{p,t}$ like absolute error (weighted to account for likely exceedance)
+\item Average $Q_{p,t}$ over $p$ = CRPS (Continuous Rank Probability Score)
 \end{itemize}}
 \end{textblock}
 \begin{textblock}{6}(10,2)
@@ -430,8 +442,7 @@ auscafe %>%
                   pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
-  accuracy(
-    data = auscafe,
+  accuracy(data = auscafe,
     measures = list(crps=CRPS, rmse=RMSE)
   ) %>%
   arrange(crps)
@@ -467,7 +478,7 @@ auscafe %>%
   autoplot(turnover) +
   geom_line(data = future %>% mutate(modrep = paste0(.model, .rep)), aes(y = .sim, col = .model, group = c(modrep))) +
   labs(x = "Month", y = "Turnover (A$million)") +
-  guides(colour = guide_legend("Model"))
+  guides(colour = guide_legend("Model")) 
 ```
 
 ## Ensemble forecasting
@@ -478,12 +489,11 @@ auscafe %>%
 ```{r ensemble1, echo=TRUE}
 auscafe %>%
   filter(year(date) <= 2018) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~
-                  pdq(d=1) + PDQ(D=1))
+  model(ETS = ETS(turnover),
+        ARIMA = ARIMA(turnover ~
+                    pdq(d=1) + PDQ(D=1))
   ) %>%
-  forecast(h = "1 years")
+  forecast(h = "1 year")
 ```
 
 \etwocol
@@ -498,19 +508,16 @@ auscafe %>%
 ```{r ensemble2, echo=TRUE, dependson='ensemble1a'}
 auscafe %>%
   filter(year(date) <= 2018) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~
-                  pdq(d=1) + PDQ(D=1))
+  model(ETS = ETS(turnover),
+        ARIMA = ARIMA(turnover ~
+                    pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1],
-      turnover[2],
-      weights = c(0.5, 0.5)
-    )
-  )
+                turnover[1], turnover[2],
+                weights=c(0.5,0.5))) %>%
+  mutate(.model = "ENSEMBLE") 
 ```
 
 \etwocol
@@ -525,20 +532,18 @@ auscafe %>%
 ```{r ensemble3, echo=TRUE, dependson='ensemble1a'}
 auscafe %>%
   filter(year(date) <= 2018) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~
-                  pdq(d=1) + PDQ(D=1))
+  model(ETS = ETS(turnover),
+        ARIMA = ARIMA(turnover ~
+                    pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1],
-      turnover[2],
-      weights = c(0.5, 0.5)
-    )
-  ) %>%
+                turnover[1], turnover[2],
+                weights=c(0.5,0.5))) %>%
+  mutate(.model = "ENSEMBLE") %>%
   as_fable(response = "turnover",
+           key = .model,
            distribution = turnover)
 ```
 
@@ -554,31 +559,29 @@ auscafe %>%
 ```{r ensemble4, echo=TRUE, dependson='ensemble2a'}
 auscafe %>%
   filter(year(date) <= 2018) %>%
-  model(
-    ETS = ETS(turnover),
-    ARIMA = ARIMA(turnover ~
-                  pdq(d=1) + PDQ(D=1))
+  model(ETS = ETS(turnover),
+        ARIMA = ARIMA(turnover ~
+                    pdq(d=1) + PDQ(D=1))
   ) %>%
   forecast(h = "1 year") %>%
   summarise(
     turnover = dist_mixture(
-      turnover[1],
-      turnover[2],
-      weights = c(0.5, 0.5)
-    )
-  ) %>%
-  as_fable(response = "turnover",
+                turnover[1], turnover[2],
+                weights=c(0.5,0.5))) %>%
+  mutate(.model = "ENSEMBLE") %>%
+  as_fable(response = "turnover", 
+           key = .model,
            distribution = turnover) %>%
-  accuracy(
-    data = auscafe,
-    measures = list(crps=CRPS, rmse=RMSE)
-  )
+  accuracy(data = auscafe,
+    measures = list(crps=CRPS, rmse=RMSE))
 ```
 
 \pause\color{Orange}\textbf{Comparison:}
 
 ```{r crps_comparison, ref.label="crps4", echo=FALSE}
 ```
+
+\vspace*{10cm}
 
 \etwocol
 
@@ -679,9 +682,99 @@ auscafe %>%
   arrange(crps)
 ```
 
+\pause\color{Orange}\textbf{Comparison:}
+
+```{r crps_comparison2, ref.label="ensemble4", echo=FALSE}
+```
+
+\vspace*{10cm}
+
 \etwocol
 
 \vspace*{10cm}
+
+## Combination vs ensemble forecasting
+\fontsize{9}{10}\sf
+
+```{r comparison1, eval=TRUE, dependson='samples'}
+train <- auscafe %>%
+  filter(year(date) <= 2018)
+fc <- train %>%
+  model(
+    ETS = ETS(turnover),
+    ARIMA = ARIMA(turnover ~
+                  pdq(d=1) + PDQ(D=1))
+  ) %>%
+  mutate(Combination = (ETS + ARIMA)/2) %>%
+  forecast(h = "1 year")
+ensemble <- fc %>%
+  filter(.model %in% c("ETS", "ARIMA")) %>%
+  summarise(
+    turnover = dist_mixture(
+                turnover[1], turnover[2],
+                weights = c(0.5, 0.5))
+  ) %>%
+  mutate(.model = "Ensemble") %>%
+  as_tibble() %>%
+  select(date,.model,turnover)
+combination  <- fc %>%
+  filter(.model=="Combination") %>%
+  as_tibble() %>%
+  select(date,.model,turnover)
+fc2 <- bind_rows(ensemble, combination) %>%
+  mutate(.model = factor(.model, levels=c("Combination","Ensemble"))) %>%
+  as_fable(index=date, key=.model, distribution=turnover, response="turnover") 
+fc2 %>% autoplot(train %>% filter(year(date) >= 2017)) +
+  autolayer(filter(fc2, .model=="Combination"), color='#DC3220') +
+  autolayer(filter(fc2, .model=="Ensemble"), color='#E66100') 
+```
+
+
+## Combination vs ensemble forecasting
+\fontsize{9}{10}\sf
+
+```{r comparison2, eval=TRUE, dependson='samples'}
+fc2 %>% autoplot(train %>% filter(year(date) >= 2017)) +
+  autolayer(filter(fc2, .model=="Ensemble"), color='#E66100') + 
+  autolayer(filter(fc2, .model=="Combination"), color='#DC3220') 
+```
+
+## Combination vs ensemble forecasting
+\fontsize{9}{10}\sf
+
+```{r comparison3}
+fc_combined <- tibble(
+  .model = c("Combination", "Mixture"),
+  dist = c((dist_normal(3700, 80) + dist_normal(3900, 120))/2,
+           dist_mixture(dist_normal(3700, 80), dist_normal(3900, 120), weights = c(0.5, 0.5)))
+)
+fc_base <- tidyr::expand_grid(
+  .model = c("Combination", "Mixture"),
+  dist = c(dist_normal(3700, 80), dist_normal(3900, 120)),
+) %>% 
+  mutate(.base = rep(c("ETS", "ARIMA"), 2))
+
+ggplot() + 
+  stat_dist_slab(aes(dist = dist, y = ""), data = fc_combined) +
+  stat_dist_slab(aes(dist = dist, y = "", colour = .base), size = 0.3, fill = NA, data = fc_base) + 
+  geom_vline(aes(xintercept = mu, linetype = "Mean"), mutate(fc_combined, mu = mean(dist))) +
+  geom_vline(aes(xintercept = median, linetype = "Median"), mutate(fc_combined, median = median(dist))) +
+  coord_cartesian(expand = FALSE) +
+  facet_grid(vars(.model), switch = "y") +
+  theme(legend.position = "bottom") +
+  labs(y = NULL, x = NULL, colour = "Model", linetype = "Forecast")
+```
+
+\only<2->{\begin{textblock}{4.3}(11.4,2)
+\begin{block}{}
+\begin{itemize}
+\item Combinations involve averaging the distributions.
+\item Ensembles involve mixing the distributions.
+\item The means are the same, but other characteristics are different.
+\end{itemize}
+\end{block}
+\end{textblock}}
+
 
 # Forecasting many series
 
@@ -703,13 +796,13 @@ cafe
 
 ```{r states_plot2, include=FALSE}
 pdf(file = "figs/state_plot.pdf", width=22/2.54, height=10/2.54)
-p <- cafe %>% 
+p <- cafe %>%
   autoplot(turnover) +
   labs(
     x = "Month",
     y = "Turnover (A$million)",
     title = "Australian monthly café turnover"
-  ) 
+  )
 print(p)
 crop::dev.off.crop()
 ```
@@ -855,8 +948,8 @@ crps
 \btwocol
 
 ```{r states8, echo=TRUE}
-sn_crps <- crps %>% 
-  filter(.model=="SNAIVE") %>% 
+sn_crps <- crps %>%
+  filter(.model=="SNAIVE") %>%
   select(state,crps) %>%
   rename(sn_crps = "crps")
 sn_crps
@@ -872,8 +965,8 @@ sn_crps
 \btwocol
 
 ```{r states9, echo=TRUE}
-sn_crps <- crps %>% 
-  filter(.model=="SNAIVE") %>% 
+sn_crps <- crps %>%
+  filter(.model=="SNAIVE") %>%
   select(state,crps) %>%
   rename(sn_crps = "crps")
 crps %>%
