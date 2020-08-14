@@ -87,13 +87,6 @@ colours <- tibble(modrep = unique(future$modrep)) %>%
 future <- future %>% left_join(colours, by = "modrep")
 ```
 
-```{r, echo=FALSE, eval=FALSE}
-train %>%
-  model(ETS = ETS(turnover)) %>%
-  generate(times=10, h="1 year")  %>%
-  autoplot() + autolayer(train)
-```
-
 # Quantile forecasting
 
 ## Where is Melbourne?
@@ -512,35 +505,9 @@ auscafe %>%
   summarise(
     turnover = dist_mixture(
                 turnover[1], turnover[2],
-                weights=c(0.5,0.5))) %>%
-  mutate(.model = "ENSEMBLE") 
-```
-
-\etwocol
-
-\vspace*{10cm}
-
-## Ensemble forecasting
-\fontsize{9}{10}\sf
-
-\btwocol
-
-```{r ensemble3, echo=TRUE, dependson='ensemble1a'}
-auscafe %>%
-  filter(year(date) <= 2018) %>%
-  model(ETS = ETS(turnover),
-        ARIMA = ARIMA(turnover ~
-                    pdq(d=1) + PDQ(D=1))
+                weights=c(0.5,0.5))
   ) %>%
-  forecast(h = "1 year") %>%
-  summarise(
-    turnover = dist_mixture(
-                turnover[1], turnover[2],
-                weights=c(0.5,0.5))) %>%
-  mutate(.model = "ENSEMBLE") %>%
-  as_fable(response = "turnover",
-           key = .model,
-           distribution = turnover)
+  mutate(.model = "ENSEMBLE") 
 ```
 
 \etwocol
@@ -563,13 +530,13 @@ auscafe %>%
   summarise(
     turnover = dist_mixture(
                 turnover[1], turnover[2],
-                weights=c(0.5,0.5))) %>%
+                weights=c(0.5,0.5))
+  ) %>%
   mutate(.model = "ENSEMBLE") %>%
-  as_fable(response = "turnover", 
-           key = .model,
-           distribution = turnover) %>%
-  accuracy(data = auscafe,
-    measures = list(crps=CRPS, rmse=RMSE))
+  accuracy(
+    data = auscafe,
+    measures = list(crps=CRPS, rmse=RMSE)
+  )
 ```
 
 \pause\color{Orange}\textbf{Comparison:}
