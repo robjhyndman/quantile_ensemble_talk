@@ -50,7 +50,8 @@ fc %>%
       mase = MASE,
       ss_crps = skill_score(CRPS),
       ss_rmse = skill_score(RMSE)
-    )
+    ),
+    n_quantiles = 100
   ) %>%
   group_by(.model) %>%
   summarise(

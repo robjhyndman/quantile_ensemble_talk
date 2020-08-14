@@ -235,10 +235,15 @@
     },
     "distributional": {
       "Package": "distributional",
-      "Version": "0.2.0",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Hash": "02bd68789deb73194fde2ecefbbe97c9"
+      "Version": "0.2.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "distributional",
+      "RemoteUsername": "mitchelloharawild",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "d2fd76e06e8a8336b2708f8999b9312de2c395d0",
+      "Hash": "ea27409ec05cb8ef4e82e3bd02453fa7"
     },
     "dplyr": {
       "Package": "dplyr",
@@ -282,8 +287,8 @@
       "RemoteRepo": "fabletools",
       "RemoteUsername": "tidyverts",
       "RemoteRef": "HEAD",
-      "RemoteSha": "6ef3272d5635cf870d21ca75cb65d87bcf149c0d",
-      "Hash": "f609ba20809a39ddcfb356e5c8091c25"
+      "RemoteSha": "b0d38751e6ecd718cea00215fb5234e2cc774692",
+      "Hash": "5fcf8f03fddb769e8e48cb737aac14af"
     },
     "fansi": {
       "Package": "fansi",
