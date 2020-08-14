@@ -32,12 +32,11 @@ fc_ensemble <- fc %>%
   filter(.model %in% c("ETS","ARIMA")) %>%
   group_by(state) %>%
   summarise(
-    turnover = dist_mixture(
-      turnover[1], turnover[2],
-      weights=c(0.5,0.5))
+    turnover = dist_mixture(turnover[1], turnover[2], weights=c(0.5,0.5))
   ) %>%
   transmute(.model = "ENSEMBLE", turnover) %>%
   as_fable(key = c(state, .model))
+
 fc <- bind_rows(fc, fc_ensemble)
 
 # Check forecast accuracy against 2019 data
