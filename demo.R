@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(fable)
+library(distributional)
 
 # Load data
 cafe <- readRDS("cafe.rds")
@@ -39,6 +40,31 @@ fc %>%
     )
   ) %>%
   group_by(.model) %>%
+  summarise(
+    ss_crps = mean(ss_crps) * 100,
+    ss_rmse = mean(ss_rmse)*100,
+    mase = mean(mase)
+  )
+
+# Ensembles
+
+fc %>%
+  filter(.model %in% c("ETS","ARIMA")) %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1], turnover[2],
+      weights=c(0.5,0.5))
+  ) %>%
+  accuracy(
+    data = cafe,
+    measures = list(
+      crps = CRPS,
+      rmse = RMSE,
+      mase = MASE,
+      ss_crps=skill_score(CRPS),
+      ss_rmse=skill_score(RMSE)
+    )
+  ) %>%
   summarise(
     ss_crps = mean(ss_crps) * 100,
     ss_rmse = mean(ss_rmse)*100,
