@@ -2,32 +2,45 @@ library(tidyverse)
 library(lubridate)
 library(fable)
 
+# Load data
 cafe <- readRDS("cafe.rds")
 
+# Plot data
 cafe %>%
   autoplot(turnover) +
   scale_y_log10()
 
-fc <- cafe %>%
+# Fit models to training data
+fit <- cafe %>%
   filter(year(date) <= 2018) %>%
   model(
     ETS = ETS(turnover),
     ARIMA = ARIMA(turnover ~ pdq(d = 1) + PDQ(D = 1)),
     SNAIVE = SNAIVE(turnover)
-  ) %>%
+  )
+
+# Add combination and produce forecasts
+fc <- fit %>%
   mutate(
     COMB = (ETS + ARIMA) / 2
   ) %>%
   forecast(h = "1 year")
 
+# Check forecast accuracy against 2019 data
 fc %>%
   accuracy(
     data = cafe,
     measures = list(
       crps = CRPS,
       rmse = RMSE,
-      ss=skill_score(CRPS)
+      mase = MASE,
+      ss_crps=skill_score(CRPS),
+      ss_rmse=skill_score(RMSE)
     )
   ) %>%
   group_by(.model) %>%
-  summarise(sspc = mean(ss) * 100)
+  summarise(
+    ss_crps = mean(ss_crps) * 100,
+    ss_rmse = mean(ss_rmse)*100,
+    mase = mean(mase)
+  )
