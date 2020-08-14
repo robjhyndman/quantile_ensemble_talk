@@ -27,6 +27,19 @@ fc <- fit %>%
   ) %>%
   forecast(h = "1 year")
 
+# Add ensemble of ARIMA and ETS forecasts
+fc_ensemble <- fc %>%
+  filter(.model %in% c("ETS","ARIMA")) %>%
+  group_by(state) %>%
+  summarise(
+    turnover = dist_mixture(
+      turnover[1], turnover[2],
+      weights=c(0.5,0.5))
+  ) %>%
+  transmute(.model = "ENSEMBLE", turnover) %>%
+  as_fable(key = c(state, .model))
+fc <- bind_rows(fc, fc_ensemble)
+
 # Check forecast accuracy against 2019 data
 fc %>%
   accuracy(
@@ -35,38 +48,13 @@ fc %>%
       crps = CRPS,
       rmse = RMSE,
       mase = MASE,
-      ss_crps=skill_score(CRPS),
-      ss_rmse=skill_score(RMSE)
+      ss_crps = skill_score(CRPS),
+      ss_rmse = skill_score(RMSE)
     )
   ) %>%
   group_by(.model) %>%
   summarise(
     ss_crps = mean(ss_crps) * 100,
-    ss_rmse = mean(ss_rmse)*100,
-    mase = mean(mase)
-  )
-
-# Ensembles
-
-fc %>%
-  filter(.model %in% c("ETS","ARIMA")) %>%
-  summarise(
-    turnover = dist_mixture(
-      turnover[1], turnover[2],
-      weights=c(0.5,0.5))
-  ) %>%
-  accuracy(
-    data = cafe,
-    measures = list(
-      crps = CRPS,
-      rmse = RMSE,
-      mase = MASE,
-      ss_crps=skill_score(CRPS),
-      ss_rmse=skill_score(RMSE)
-    )
-  ) %>%
-  summarise(
-    ss_crps = mean(ss_crps) * 100,
-    ss_rmse = mean(ss_rmse)*100,
+    ss_rmse = mean(ss_rmse) * 100,
     mase = mean(mase)
   )
