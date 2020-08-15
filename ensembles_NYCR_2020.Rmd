@@ -142,7 +142,7 @@ p1 +
 
 \begin{textblock}{5.7}(2.2,1.9)\begin{block}{}\fontsize{9}{11}\sf
 \texttt{train \%>\%}\\
-\texttt{  model(ETS = ETS(turnover))}\\
+\texttt{  model(ETS = ETS(turnover)) \%>\%}\\
 \texttt{  generate(times=5, h="1 year") \%>\%}\\
 \texttt{  autoplot() + autolayer(train)}\end{block}\end{textblock}
 
